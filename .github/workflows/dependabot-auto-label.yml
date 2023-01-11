@@ -1,0 +1,40 @@
+name: Dependabot auto-label
+on: pull_request_target
+
+permissions:
+  pull-requests: write
+  issues: write
+  repository-projects: write
+
+jobs:
+  dependabot:
+    name: Auto-label
+    runs-on: ubuntu-latest
+    if: ${{ github.event.pull_request.user.login == 'dependabot[bot]' }}
+    env:
+      PR_URL: ${{github.event.pull_request.html_url}}
+      GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+    steps:
+      - name: Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@main
+        with:
+          alert-lookup: true
+          compat-lookup: true
+          github-token: ${{secrets.PAT_GITHUB_TOKEN_ALERT_LOOKUP}}
+          
+      - name: Add a label for direct dependencies
+        if: startsWith(steps.metadata.outputs.dependency-type, 'direct')
+        run: gh pr edit "$PR_URL" --add-label "direct dependencies"
+      - name: Add a label for indirect dependencies
+        if: startsWith(steps.metadata.outputs.dependency-type, 'indirect')
+        run: gh pr edit "$PR_URL" --add-label "indirect dependencies"
+      - name: Add a label production dependencies
+        if: contains(steps.metadata.outputs.dependency-type, 'production')
+        run: gh pr edit "$PR_URL" --add-label "production dependencies"
+      - name: Add a label for devepoment dependencies
+        if: contains(steps.metadata.outputs.dependency-type, 'development')
+        run: gh pr edit "$PR_URL" --add-label "development dependencies"
+      - name: Add a label for security PRs
+        if: steps.metadata.outputs.ghsa-id
+        run: gh pr edit "$PR_URL" --add-label "security"
